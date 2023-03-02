@@ -5,8 +5,8 @@ use std::{
 };
 
 use cgmath::{Angle, InnerSpace, Point3, Quaternion, Rad, Rotation3, Vector3};
-use obj::Obj;
-use obj::Vertex;
+use glium::{index::NoIndices, uniform, Display, DrawParameters, Program, Surface};
+use obj::{Obj, SimpleP};
 use types::{line_segment::LineSegment, triangle::Triangle};
 pub mod types;
 
@@ -220,4 +220,25 @@ pub fn create_square_from_intersection(
 
 fn triangle_normal(p1: Point3<f32>, p2: Point3<f32>, p3: Point3<f32>) -> Vector3<f32> {
     (p2 - p1).cross(p3 - p1).normalize()
+}
+
+pub fn draw_line(display: &Display, program: &Program, line: &LineSegment) {
+    let vertex_buffer = line.to_vertex_buffer(display);
+    let indices = NoIndices(glium::index::PrimitiveType::LinesList);
+
+    let draw_params = DrawParameters {
+        line_width: Some(1.0),
+        ..Default::default()
+    };
+
+    let uniforms = uniform! {};
+
+    let mut target = display.draw();
+    target.clear_color(0.0, 0.0, 0.0, 1.0);
+
+    target
+        .draw(&vertex_buffer, &indices, program, &uniforms, &draw_params)
+        .unwrap();
+
+    target.finish().unwrap();
 }
