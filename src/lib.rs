@@ -6,7 +6,7 @@ use std::{
 
 use cgmath::{Angle, InnerSpace, Point3, Quaternion, Rad, Rotation3, Vector3};
 use glium::{index::NoIndices, uniform, Display, DrawParameters, Program, Surface};
-use obj::{Obj, SimpleP};
+use obj::Obj;
 use types::{line_segment::LineSegment, triangle::Triangle};
 pub mod types;
 
@@ -46,7 +46,7 @@ fn intersect_triangle(line: &LineSegment, triangle: &Triangle) -> Option<Point3<
 pub fn found_intersections(
     line: LineSegment,
     model: String,
-) -> Result<Vec<[Point3<f32>; 4]>, Box<dyn std::error::Error>> {
+) -> Result<Vec<Point3<f32>>, Box<dyn std::error::Error>> {
     let mut intersections = Vec::new();
     let obj = load_from_file(model)?;
     let triangles = generate_triangles(&obj)?;
@@ -54,8 +54,8 @@ pub fn found_intersections(
     for triangle in triangles {
         if let Some(intersection) = intersect_triangle(&line, &triangle) {
             // intersections.push(intersection);
-            let square = create_square_from_intersection(intersection, &triangle);
-            intersections.push(square);
+            // let square = create_square_from_intersection(intersection, &triangle);
+            intersections.push(intersection);
         }
     }
     write_to_file(intersections.clone(), &obj, &line, "output.obj")?;
@@ -98,20 +98,18 @@ fn generate_triangles(obj: &Obj) -> Result<Vec<Triangle>, Box<dyn std::error::Er
 }
 
 fn write_to_file(
-    intersections: Vec<[Point3<f32>; 4]>,
+    intersections: Vec<Point3<f32>>,
     obj: &Obj,
     line: &LineSegment,
     output_path: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let file = File::create(output_path)?;
     let mut writer = BufWriter::new(file);
-    // let mut writer = File::create(output_path)?;
-
     // Write vertices
     for vertex in &obj.vertices {
         writeln!(
             &mut writer,
-            "v {} {} {} ",
+            "v {} {} {} 0 0 255",
             vertex.position[0], vertex.position[1], vertex.position[2]
         )?;
     }
@@ -124,6 +122,37 @@ fn write_to_file(
         let _ = writeln!(writer, "f {} {} {}", v1, v2, v3);
     });
 
+    let mut current_vertices_count = obj.vertices.len();
+
+    for intersection in intersections {
+        // 计算四面体的四个顶点
+        let v1 = intersection + Vector3::new(5.0, 0.0, 0.0);
+        let v2 = intersection + Vector3::new(0.0, 5.0, 0.0);
+        let v3 = intersection + Vector3::new(0.0, 0.0, 5.0);
+        let v4 = intersection - Vector3::new(5.0, 1.0, 1.0);
+
+        // add 4 vertices
+        writeln!(&mut writer, "v {} {} {} 255 0 0", v1[0], v1[1], v1[2])?;
+        writeln!(&mut writer, "v {} {} {} 255 0 0", v2[0], v2[1], v2[2])?;
+        writeln!(&mut writer, "v {} {} {} 255 0 0", v3[0], v3[1], v3[2])?;
+        writeln!(&mut writer, "v {} {} {} 255 0 0", v4[0], v4[1], v4[2])?;
+
+        // add 4 f
+
+        ((current_vertices_count + 1)..=(current_vertices_count + 4))
+            .collect::<Vec<_>>()
+            .as_slice()
+            .chunks_exact(4)
+            .for_each(|item| {
+                let _ = writeln!(writer, "f {} {} {}", item[0], item[1], item[2]);
+                let _ = writeln!(writer, "f {} {} {}", item[0], item[1], item[3]);
+                let _ = writeln!(writer, "f {} {} {}", item[1], item[2], item[3]);
+                let _ = writeln!(writer, "f {} {} {}", item[0], item[2], item[3]);
+            });
+
+        current_vertices_count += 4;
+    }
+
     // Write intersection points as vertices with a special color
     // let color_str = "0 0 255"; // Red color
     // for intersection in intersections {
@@ -133,39 +162,39 @@ fn write_to_file(
     //         intersection.x, intersection.y, intersection.z, color_str
     //     )?;
     // }
-    let current_vertices_count = obj.vertices.len();
-    let square_count = intersections.len() * 4;
+    // let current_vertices_count = obj.vertices.len();
+    // let square_count = intersections.len() * 4;
 
-    intersections.iter().for_each(|square| {
-        let _ = writeln!(
-            &mut writer,
-            "v {} {} {} 255 0 0",
-            square[0][0], square[0][1], square[0][2]
-        );
-        let _ = writeln!(
-            &mut writer,
-            "v {} {} {} 255 0 0",
-            square[1][0], square[1][1], square[1][2]
-        );
-        let _ = writeln!(
-            &mut writer,
-            "v {} {} {} 255 0 0",
-            square[2][0], square[2][1], square[2][2]
-        );
-        let _ = writeln!(
-            &mut writer,
-            "v {} {} {} 255 0 0",
-            square[3][0], square[3][1], square[3][2]
-        );
-    });
+    // intersections.iter().for_each(|square| {
+    //     let _ = writeln!(
+    //         &mut writer,
+    //         "v {} {} {} 255 0 0",
+    //         square[0][0], square[0][1], square[0][2]
+    //     );
+    //     let _ = writeln!(
+    //         &mut writer,
+    //         "v {} {} {} 255 0 0",
+    //         square[1][0], square[1][1], square[1][2]
+    //     );
+    //     let _ = writeln!(
+    //         &mut writer,
+    //         "v {} {} {} 255 0 0",
+    //         square[2][0], square[2][1], square[2][2]
+    //     );
+    //     let _ = writeln!(
+    //         &mut writer,
+    //         "v {} {} {} 255 0 0",
+    //         square[3][0], square[3][1], square[3][2]
+    //     );
+    // });
 
-    ((current_vertices_count + 1)..=(current_vertices_count + square_count))
-        .collect::<Vec<_>>()
-        .as_slice()
-        .chunks_exact(4)
-        .for_each(|item| {
-            let _ = writeln!(writer, "f {} {} {} {}", item[0], item[1], item[2], item[3]);
-        });
+    // ((current_vertices_count + 1)..=(current_vertices_count + square_count))
+    //     .collect::<Vec<_>>()
+    //     .as_slice()
+    //     .chunks_exact(4)
+    //     .for_each(|item| {
+    //         let _ = writeln!(writer, "f {} {} {} {}", item[0], item[1], item[2], item[3]);
+    //     });
 
     // Write line as a triangle
     // let line_color_str = "0 0 255"; // Red color
