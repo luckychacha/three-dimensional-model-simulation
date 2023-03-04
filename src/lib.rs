@@ -1,10 +1,9 @@
 use std::{
-    error::Error,
     fs::File,
     io::{BufReader, BufWriter, Write},
 };
 
-use cgmath::{Angle, InnerSpace, Point3, Quaternion, Rad, Rotation3, Vector3};
+use cgmath::{InnerSpace, Point3, Vector3};
 use glium::{index::NoIndices, uniform, Display, DrawParameters, Program, Surface};
 use obj::Obj;
 use types::{line_segment::LineSegment, triangle::Triangle};
@@ -28,7 +27,7 @@ fn intersect_triangle(line: &LineSegment, triangle: &Triangle) -> Option<Point3<
     let f = 1.0 / a;
     let s = orig - v1;
     let u = f * s.dot(h);
-    if u < 0.0 || u > 1.0 {
+    if !(0.0..=1.0).contains(&u) {
         return None;
     }
     let q = s.cross(edge1);
@@ -65,7 +64,7 @@ pub fn found_intersections(
 }
 
 pub fn load_from_file(model: String) -> Result<Obj, Box<dyn std::error::Error>> {
-    let file = File::open(&model)?;
+    let file = File::open(model)?;
     let reader = BufReader::new(file);
     let obj: Obj = obj::load_obj(reader)?;
 
@@ -100,7 +99,7 @@ fn generate_triangles(obj: &Obj) -> Result<Vec<Triangle>, Box<dyn std::error::Er
 fn write_to_file(
     intersections: Vec<Point3<f32>>,
     obj: &Obj,
-    line: &LineSegment,
+    _line: &LineSegment,
     output_path: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let file = File::create(output_path)?;
@@ -119,7 +118,7 @@ fn write_to_file(
         let v1 = chunk[0] as u32 + 1;
         let v2 = chunk[1] as u32 + 1;
         let v3 = chunk[2] as u32 + 1;
-        let _ = writeln!(writer, "f {} {} {}", v1, v2, v3);
+        let _ = writeln!(writer, "f {v1} {v2} {v3}");
     });
 
     let mut current_vertices_count = obj.vertices.len();
@@ -153,71 +152,6 @@ fn write_to_file(
         current_vertices_count += 4;
     }
 
-    // Write intersection points as vertices with a special color
-    // let color_str = "0 0 255"; // Red color
-    // for intersection in intersections {
-    //     writeln!(
-    //         writer,
-    //         "v {} {} {} {}",
-    //         intersection.x, intersection.y, intersection.z, color_str
-    //     )?;
-    // }
-    // let current_vertices_count = obj.vertices.len();
-    // let square_count = intersections.len() * 4;
-
-    // intersections.iter().for_each(|square| {
-    //     let _ = writeln!(
-    //         &mut writer,
-    //         "v {} {} {} 255 0 0",
-    //         square[0][0], square[0][1], square[0][2]
-    //     );
-    //     let _ = writeln!(
-    //         &mut writer,
-    //         "v {} {} {} 255 0 0",
-    //         square[1][0], square[1][1], square[1][2]
-    //     );
-    //     let _ = writeln!(
-    //         &mut writer,
-    //         "v {} {} {} 255 0 0",
-    //         square[2][0], square[2][1], square[2][2]
-    //     );
-    //     let _ = writeln!(
-    //         &mut writer,
-    //         "v {} {} {} 255 0 0",
-    //         square[3][0], square[3][1], square[3][2]
-    //     );
-    // });
-
-    // ((current_vertices_count + 1)..=(current_vertices_count + square_count))
-    //     .collect::<Vec<_>>()
-    //     .as_slice()
-    //     .chunks_exact(4)
-    //     .for_each(|item| {
-    //         let _ = writeln!(writer, "f {} {} {} {}", item[0], item[1], item[2], item[3]);
-    //     });
-
-    // Write line as a triangle
-    // let line_color_str = "0 0 255"; // Red color
-    // let line_v1 = obj.vertices.len() as u32 + 1;
-    // let line_v2 = obj.vertices.len() as u32 + 2;
-    // let line_v3 = obj.vertices.len() as u32 + 3;
-    // writeln!(
-    //     writer,
-    //     "v {} {} {} {}",
-    //     line.start.x, line.start.y, line.start.z, line_color_str
-    // )?;
-    // writeln!(
-    //     writer,
-    //     "v {} {} {} {}",
-    //     line.end.x, line.end.y, line.end.z, line_color_str
-    // )?;
-    // writeln!(
-    //     writer,
-    //     "v {} {} {} {}  ",
-    //     line.start.x, line.start.y, line.start.z, line_color_str
-    // )?;
-    // writeln!(writer, "f {} {} {}", line_v1, line_v2, line_v3)?;
-
     Ok(())
 }
 
@@ -240,7 +174,7 @@ pub fn create_square_from_intersection(
     let mut p4 = intersection + (side2.normalize() * 0.05);
 
     let dir = Vector3::new(1.0, 1.0, 1.0);
-    let dist = 0.05 * (2.0 as f32).sqrt();
+    let dist = 0.05 * (2.0_f32).sqrt();
     p3 += (dir * dist).cross(side1).normalize() * 0.05;
     p4 += (dir * dist).cross(side2).normalize() * 0.05;
 
@@ -266,7 +200,7 @@ pub fn draw_line(display: &Display, program: &Program, line: &LineSegment) {
     target.clear_color(0.0, 0.0, 0.0, 1.0);
 
     target
-        .draw(&vertex_buffer, &indices, program, &uniforms, &draw_params)
+        .draw(&vertex_buffer, indices, program, &uniforms, &draw_params)
         .unwrap();
 
     target.finish().unwrap();
