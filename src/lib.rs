@@ -6,7 +6,7 @@ use std::{
 use cgmath::{InnerSpace, Point3, Vector3};
 use glium::{index::NoIndices, uniform, Display, DrawParameters, Program, Surface};
 use obj::Obj;
-use types::{line_segment::LineSegment, triangle::Triangle};
+use types::{intersection::Intersection, line_segment::LineSegment, triangle::Triangle};
 pub mod types;
 
 fn intersect_triangle(line: &LineSegment, triangle: &Triangle) -> Option<Point3<f32>> {
@@ -44,12 +44,10 @@ fn intersect_triangle(line: &LineSegment, triangle: &Triangle) -> Option<Point3<
 
 pub fn found_intersections(
     line: LineSegment,
-    model: String,
-) -> Result<Vec<Point3<f32>>, Box<dyn std::error::Error>> {
+    model: &Obj,
+) -> Result<Intersection, Box<dyn std::error::Error>> {
     let mut intersections = Vec::new();
-    let obj = load_from_file(model)?;
-    let triangles = generate_triangles(&obj)?;
-
+    let triangles = generate_triangles(model)?;
     for triangle in triangles {
         if let Some(intersection) = intersect_triangle(&line, &triangle) {
             // intersections.push(intersection);
@@ -57,10 +55,13 @@ pub fn found_intersections(
             intersections.push(intersection);
         }
     }
-    write_to_file(intersections.clone(), &obj, &line, "output.obj")?;
+    println!("{intersections:?}");
+    let intersection = Intersection {
+        intersections,
+        edge_length: 5_f32,
+    };
 
-    println!("intersections:{}", intersections.len());
-    Ok(intersections)
+    Ok(intersection)
 }
 
 pub fn load_from_file(model: String) -> Result<Obj, Box<dyn std::error::Error>> {
@@ -96,8 +97,8 @@ fn generate_triangles(obj: &Obj) -> Result<Vec<Triangle>, Box<dyn std::error::Er
     Ok(triangles)
 }
 
-fn write_to_file(
-    intersections: Vec<Point3<f32>>,
+pub fn write_to_file(
+    intersection: Intersection,
     obj: &Obj,
     _line: &LineSegment,
     output_path: &str,
@@ -123,12 +124,12 @@ fn write_to_file(
 
     let mut current_vertices_count = obj.vertices.len();
 
-    for intersection in intersections {
-        // 计算四面体的四个顶点
+    for intersection in intersection.intersections {
+        // Calculate the four vertices of the tetrahedron.
         let v1 = intersection + Vector3::new(5.0, 0.0, 0.0);
         let v2 = intersection + Vector3::new(0.0, 5.0, 0.0);
         let v3 = intersection + Vector3::new(0.0, 0.0, 5.0);
-        let v4 = intersection - Vector3::new(5.0, 1.0, 1.0);
+        let v4 = intersection - Vector3::new(5.0, 5.0, 5.0);
 
         // add 4 vertices
         writeln!(&mut writer, "v {} {} {} 255 0 0", v1[0], v1[1], v1[2])?;
@@ -136,7 +137,7 @@ fn write_to_file(
         writeln!(&mut writer, "v {} {} {} 255 0 0", v3[0], v3[1], v3[2])?;
         writeln!(&mut writer, "v {} {} {} 255 0 0", v4[0], v4[1], v4[2])?;
 
-        // add 4 f
+        // add 4 face
 
         ((current_vertices_count + 1)..=(current_vertices_count + 4))
             .collect::<Vec<_>>()

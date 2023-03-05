@@ -1,5 +1,7 @@
 use cgmath::Point3;
-use three_dimensional_model_simulation::{found_intersections, types::line_segment::LineSegment};
+use three_dimensional_model_simulation::{
+    found_intersections, load_from_file, types::line_segment::LineSegment, write_to_file,
+};
 
 fn main() {
     let line = LineSegment {
@@ -15,14 +17,9 @@ fn main() {
         },
     };
     let model = String::from("cube_6.obj");
-    match found_intersections(line, model) {
-        Ok(res) => {
-            println!("res: {res:?}");
-        }
-        Err(e) => {
-            eprintln!("error info:{e}");
-        }
+    let obj = load_from_file(model).expect("load obj file failed.");
+    if let Ok(intersection) = found_intersections(line, &obj) {
+        write_to_file(intersection, &obj, &line, "output.obj")
+            .expect("write into new obj file failed.");
     }
-
-    // let _ = load_from_file(String::from("body.obj"));
 }
