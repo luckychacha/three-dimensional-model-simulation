@@ -6,29 +6,29 @@ use std::{
 use cgmath::{InnerSpace, Point3, Vector3};
 use glium::{index::NoIndices, uniform, Display, DrawParameters, Program, Surface};
 use obj::Obj;
-use types::{intersection::Intersection, line_segment::LineSegment, triangle::Triangle};
+use types::{
+    intersection::{Intersection, Intersections},
+    line_segment::LineSegment,
+    tetrahedron::Tetrahedron,
+    triangle::Triangle,
+};
 pub mod types;
 
 pub fn found_intersections(
     line: LineSegment,
     model: &Obj,
-) -> Result<Intersection, Box<dyn std::error::Error>> {
+) -> Result<Intersections, Box<dyn std::error::Error>> {
     let mut intersections = Vec::new();
     let triangles = generate_triangles(model)?;
     for triangle in triangles {
         if let Some(intersection) = triangle.intersection_with_line(&line) {
             // intersections.push(intersection);
             // let square = create_square_from_intersection(intersection, &triangle);
-            intersections.push(intersection);
+            intersections.push(Intersection::new(intersection, 0.5_f32));
         }
     }
     println!("{intersections:?}");
-    let intersection = Intersection {
-        intersections,
-        edge_length: 5_f32,
-    };
-
-    Ok(intersection)
+    Ok(Intersections { intersections })
 }
 
 pub fn load_from_file(model: String) -> Result<Obj, Box<dyn std::error::Error>> {
@@ -65,7 +65,7 @@ fn generate_triangles(obj: &Obj) -> Result<Vec<Triangle>, Box<dyn std::error::Er
 }
 
 pub fn write_to_file(
-    intersection: Intersection,
+    intersections: Intersections,
     obj: &Obj,
     _line: &LineSegment,
     output_path: &str,
@@ -91,18 +91,35 @@ pub fn write_to_file(
 
     let mut current_vertices_count = obj.vertices.len();
 
-    for intersection in intersection.intersections {
+    intersections.intersections.iter().for_each(|intersection| {
         // Calculate the four vertices of the tetrahedron.
-        let v1 = intersection + Vector3::new(5.0, 0.0, 0.0);
-        let v2 = intersection + Vector3::new(0.0, 5.0, 0.0);
-        let v3 = intersection + Vector3::new(0.0, 0.0, 5.0);
-        let v4 = intersection - Vector3::new(5.0, 5.0, 5.0);
+        let tetrahedron: Tetrahedron = intersection.into();
 
         // add 4 vertices
-        writeln!(&mut writer, "v {} {} {} 255 0 0", v1[0], v1[1], v1[2])?;
-        writeln!(&mut writer, "v {} {} {} 255 0 0", v2[0], v2[1], v2[2])?;
-        writeln!(&mut writer, "v {} {} {} 255 0 0", v3[0], v3[1], v3[2])?;
-        writeln!(&mut writer, "v {} {} {} 255 0 0", v4[0], v4[1], v4[2])?;
+        writeln!(
+            writer,
+            "v {} {} {} 255 0 0",
+            tetrahedron.top[0], tetrahedron.top[1], tetrahedron.top[2]
+        )
+        .unwrap();
+        writeln!(
+            writer,
+            "v {} {} {} 255 0 0",
+            tetrahedron.bottoms[0][0], tetrahedron.bottoms[0][1], tetrahedron.bottoms[0][2]
+        )
+        .unwrap();
+        writeln!(
+            writer,
+            "v {} {} {} 255 0 0",
+            tetrahedron.bottoms[1][0], tetrahedron.bottoms[1][1], tetrahedron.bottoms[1][2]
+        )
+        .unwrap();
+        writeln!(
+            writer,
+            "v {} {} {} 255 0 0",
+            tetrahedron.bottoms[2][0], tetrahedron.bottoms[2][1], tetrahedron.bottoms[2][2]
+        )
+        .unwrap();
 
         // add 4 face
 
@@ -111,14 +128,14 @@ pub fn write_to_file(
             .as_slice()
             .chunks_exact(4)
             .for_each(|item| {
-                let _ = writeln!(writer, "f {} {} {}", item[0], item[1], item[2]);
-                let _ = writeln!(writer, "f {} {} {}", item[0], item[1], item[3]);
-                let _ = writeln!(writer, "f {} {} {}", item[1], item[2], item[3]);
-                let _ = writeln!(writer, "f {} {} {}", item[0], item[2], item[3]);
+                writeln!(writer, "f {} {} {}", item[0], item[1], item[2]).unwrap();
+                writeln!(writer, "f {} {} {}", item[0], item[1], item[3]).unwrap();
+                writeln!(writer, "f {} {} {}", item[1], item[2], item[3]).unwrap();
+                writeln!(writer, "f {} {} {}", item[0], item[2], item[3]).unwrap();
             });
 
         current_vertices_count += 4;
-    }
+    });
 
     Ok(())
 }

@@ -6,14 +6,14 @@ use three_dimensional_model_simulation::{
 fn main() {
     let line = LineSegment {
         start: Point3 {
-            x: 1.1,
-            y: 1.0,
-            z: 1.3,
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
         },
         end: Point3 {
-            x: 9.0,
-            y: 9.9,
-            z: 9.0,
+            x: 2.0,
+            y: 0.0,
+            z: 2.0,
         },
     };
     let model = String::from("cube_6.obj");
