@@ -28,7 +28,9 @@ pub fn found_intersections(
         }
     }
     println!("{intersections:?}");
-    Ok(Intersections { intersections })
+    Ok(Intersections {
+        inner: intersections,
+    })
 }
 
 pub fn load_from_file(model: String) -> Result<Obj, Box<dyn std::error::Error>> {
@@ -91,7 +93,7 @@ pub fn write_to_file(
 
     let mut current_vertices_count = obj.vertices.len();
 
-    intersections.intersections.iter().for_each(|intersection| {
+    intersections.inner.iter().for_each(|intersection| {
         // Calculate the four vertices of the tetrahedron.
         let tetrahedron: Tetrahedron = intersection.into();
 

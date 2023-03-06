@@ -2,7 +2,7 @@ use cgmath::Point3;
 
 #[derive(Debug)]
 pub struct Intersections {
-    pub intersections: Vec<Intersection>,
+    pub inner: Vec<Intersection>,
 }
 
 #[derive(Debug)]
