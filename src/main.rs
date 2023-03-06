@@ -16,10 +16,10 @@ fn main() {
             z: 2.0,
         },
     };
-    let model = String::from("cube_6.obj");
+    let model = String::from("assets/cube_6.obj");
     let obj = load_from_file(model).expect("load obj file failed.");
     if let Ok(intersection) = found_intersections(line, &obj) {
-        write_to_file(intersection, &obj, &line, "output.obj")
+        write_to_file(intersection, &obj, &line, "assets/output.obj")
             .expect("write into new obj file failed.");
     }
 }
