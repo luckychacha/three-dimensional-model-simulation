@@ -9,39 +9,6 @@ use obj::Obj;
 use types::{intersection::Intersection, line_segment::LineSegment, triangle::Triangle};
 pub mod types;
 
-fn intersect_triangle(line: &LineSegment, triangle: &Triangle) -> Option<Point3<f32>> {
-    const EPSILON: f32 = 0.000001;
-
-    let v1 = triangle.vertices[0];
-    let v2 = triangle.vertices[1];
-    let v3 = triangle.vertices[2];
-    let dir = line.end - line.start;
-    let orig = line.start;
-    let edge1 = v2 - v1;
-    let edge2 = v3 - v1;
-    let h = dir.cross(edge2);
-    let a = edge1.dot(h);
-    if a > -EPSILON && a < EPSILON {
-        return None;
-    }
-    let f = 1.0 / a;
-    let s = orig - v1;
-    let u = f * s.dot(h);
-    if !(0.0..=1.0).contains(&u) {
-        return None;
-    }
-    let q = s.cross(edge1);
-    let v = f * dir.dot(q);
-    if v < 0.0 || u + v > 1.0 {
-        return None;
-    }
-    let t = f * edge2.dot(q);
-    if t > EPSILON {
-        return Some(orig + t * dir);
-    }
-    None
-}
-
 pub fn found_intersections(
     line: LineSegment,
     model: &Obj,
@@ -49,7 +16,7 @@ pub fn found_intersections(
     let mut intersections = Vec::new();
     let triangles = generate_triangles(model)?;
     for triangle in triangles {
-        if let Some(intersection) = intersect_triangle(&line, &triangle) {
+        if let Some(intersection) = triangle.intersection_with_line(&line) {
             // intersections.push(intersection);
             // let square = create_square_from_intersection(intersection, &triangle);
             intersections.push(intersection);
@@ -83,12 +50,12 @@ fn generate_triangles(obj: &Obj) -> Result<Vec<Triangle>, Box<dyn std::error::Er
     let triangles = obj
         .indices
         .chunks_exact(3)
-        .map(|chunk| Triangle {
-            vertices: [
+        .map(|chunk| {
+            Triangle::new(
                 positions[chunk[0] as usize],
                 positions[chunk[1] as usize],
                 positions[chunk[2] as usize],
-            ],
+            )
         })
         .collect::<Vec<Triangle>>();
 
